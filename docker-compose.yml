@@ -1,0 +1,57 @@
+version: '3.8'
+services:
+  flaskapp:
+    build: .
+    container_name: flaskapp
+    ports:
+      - "5000:5000"
+    depends_on:
+      - mysql
+      - mongo
+      - neo4j
+    environment:
+      FLASK_ENV: development
+      SECRET_KEY: supersecretkey
+      MYSQL_HOST: mysql
+      MYSQL_USER: root
+      MYSQL_PASSWORD: example
+      MYSQL_DB: mydb
+      MONGO_URI: mongodb://mongo:27017/mydb
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: password
+
+  mysql:
+    image: mysql:8
+    container_name: mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: example
+      MYSQL_DATABASE: mydb
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  mongo:
+    image: mongo:latest
+    container_name: mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  neo4j:
+    image: neo4j:latest
+    container_name: neo4j
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+      NEO4J_AUTH: "neo4j/password"
+    volumes:
+      - neo4j_data:/data
+
+volumes:
+  mysql_data:
+  mongo_data:
+  neo4j_data:

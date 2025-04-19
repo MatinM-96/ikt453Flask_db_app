@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Flask DB App</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="{{ url_for('static', filename='js/script.js') }}" defer></script>
+  </head>
+  <body>
+    <header>
+      <h1>Database Dashboard</h1>
+      <nav>
+        <a href="{{ url_for('main.index') }}">Home</a> |
+        <a href="{{ url_for('mysql.dashboard') }}">MySQL</a> |
+        <a href="{{ url_for('mongo.dashboard') }}">MongoDB</a> |
+        <a href="{{ url_for('neo4j.dashboard') }}">Neo4j</a>
+      </nav>
+    </header>
+    <main>
+      {% block content %}{% endblock %}
+    </main>
+  </body>
+</html>

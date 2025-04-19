@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Select a Database</h2>
+<ul>
+  <li><a href="{{ url_for('mysql.dashboard') }}">MySQL</a></li>
+  <li><a href="{{ url_for('mongo.dashboard') }}">MongoDB</a></li>
+  <li><a href="{{ url_for('neo4j.dashboard') }}">Neo4j</a></li>
+</ul>
+{% endblock %}
