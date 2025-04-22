@@ -16,8 +16,8 @@ def get_db_connection():
     return mysql.connector.connect(
         host=os.getenv("MYSQL_HOST", "mysql"),
         user="root",
-        password="root",
-        database="olist"
+        password="rootpass",
+        database="ecommerce"
     )
 
 @app.get("/")
@@ -28,7 +28,7 @@ def root():
 def get_customers():
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM customers LIMIT 10")
+    cursor.execute("SELECT * FROM customer_dim LIMIT 10")
     results = cursor.fetchall()
     cursor.close()
     conn.close()

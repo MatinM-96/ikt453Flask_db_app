@@ -1,38 +1,27 @@
-version: '3.8'
+version: "3.8"
 
 services:
-
-  # BACKEND API
+  # -------------------------------------------------- BACKEND API
   api:
-    build:
-      context: ./backend/api
+    build: { context: ./backend/api }
     container_name: api
-    ports:
-      - "5000:5000"
-    depends_on:
-      - mysql
-      - mongo
-      - neo4j
-    volumes:
-      - ./backend/api:/app
+    ports: ["5000:5000"]
+    depends_on: [mysql, mongo, neo4j]
+    volumes: ["./backend/api:/app"]
     working_dir: /app
     command: ["python", "app.py"]
 
-  # FRONTEND
+  # -------------------------------------------------- FRONTEND
   frontend:
-    build:
-      context: ./frontend
+    build: { context: ./frontend }
     container_name: frontend
-    ports:
-      - "8000:8000"
-    environment:
-      - API_URL=http://api:5000
-    volumes:
-      - ./frontend:/app
+    ports: ["8000:8000"]
+    environment: ["API_URL=http://api:5000"]
+    volumes: ["./frontend:/app"]
     working_dir: /app
     command: ["python", "app.py"]
 
-  # MYSQL
+  # -------------------------------------------------- MYSQL
   mysql:
     image: mysql:8.0
     container_name: mysql
@@ -40,73 +29,83 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: rootpass
       MYSQL_DATABASE: ecommerce
-    ports:
-      - "3307:3306"
+    ports: ["3307:3306"]
     volumes:
       - ./backend/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
       - mysql_data:/var/lib/mysql
 
-  # MONGODB
+  # -------------------------------------------------- MONGODB (normal mongod)
   mongo:
     image: mongo:6.0
     container_name: mongo
     restart: always
-    ports:
-      - "27017:27017"
+    ports: ["27017:27017"]
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      #test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')"]
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # one‑shot dump restore helper
+  mongo-seed:
+    image: mongo:6.0
+    depends_on:
+      mongo:
+        condition: service_healthy
     volumes:
       - ./backend/mongodb/dump:/dump
-    command: ["mongorestore", "--drop", "--dir=/dump", "--nsInclude=ecommerce_dw.*"]
+    command: ["mongorestore", "--host=mongo", "--drop", "/dump"]
+    restart: "no"
 
-  # NEO4J
+  # -------------------------------------------------- NEO4J
   neo4j:
-    image: neo4j
+    image: neo4j:5-enterprise
     container_name: neo4j
     restart: always
     ports:
       - "7474:7474"
       - "7687:7687"
     environment:
-      NEO4J_ACCEPT_LICENSE_AGREEMENT: "yes"
+      NEO4J_ACCEPT_LICENSE_AGREEMENT: "yes"   # or "eval"
       NEO4J_AUTH: neo4j/password
-      NEO4J_dbms_security_procedures_unrestricted: "apoc.*"
       NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_dbms_security_procedures_unrestricted: "apoc.*"
+    #ports: ["7474:7474", "7687:7687"]
     volumes:
       - neo4j_data:/data
       - ./backend/neo4j:/import
 
 
-  # ZOOKEEPER
+
+  # -------------------------------------------------- ZOOKEEPER
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
     container_name: zookeeper
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-    ports:
-      - "2181:2181"
+    environment: { ZOOKEEPER_CLIENT_PORT: 2181 }
+    ports: ["2181:2181"]
 
-  # KAFKA
+  # -------------------------------------------------- KAFKA
   kafka:
     image: confluentinc/cp-kafka:7.5.0
     container_name: kafka
-    depends_on:
-      - zookeeper
+    depends_on: [zookeeper]
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-    ports:
-      - "9092:9092"
+    ports: ["9092:9092"]
 
-  # KAFKA PRODUCER
+  # -------------------------------------------------- KAFKA PRODUCER
   kafka-producer:
-    build:
-      context: ./backend/kafka
+    build: { context: ./backend/kafka }
     container_name: kafka-producer
-    depends_on:
-      - kafka
-    environment:
-      - KAFKA_BROKER=kafka:9092
+    depends_on: [kafka]
+    environment: ["KAFKA_BROKER=kafka:9092"]
     volumes:
       - ./backend/kafka:/app
       - ./backend/mongodb/dump/ecommerce_dw:/app/data
@@ -115,3 +114,4 @@ services:
 volumes:
   mysql_data:
   neo4j_data:
+  mongo_data:
