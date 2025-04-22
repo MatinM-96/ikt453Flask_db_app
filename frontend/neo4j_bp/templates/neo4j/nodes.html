@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>First 10 Neo4j nodes</h2>
+{% if nodes %}
+<table>
+  <thead><tr>
+    <th>ID</th><th>Labels</th><th>Properties</th>
+  </tr></thead>
+  <tbody>
+    {% for n in nodes %}
+    <tr>
+      <td>{{ n.id }}</td>
+      <td>{{ n.labels }}</td>
+      <td>{{ n.properties }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+  <p class="error">Couldn’t fetch Neo4j data.</p>
+{% endif %}
+{% endblock %}

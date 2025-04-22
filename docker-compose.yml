@@ -1,57 +1,117 @@
 version: '3.8'
+
 services:
-  flaskapp:
-    build: .
-    container_name: flaskapp
+
+  # BACKEND API
+  api:
+    build:
+      context: ./backend/api
+    container_name: api
     ports:
       - "5000:5000"
     depends_on:
       - mysql
       - mongo
       - neo4j
-    environment:
-      FLASK_ENV: development
-      SECRET_KEY: supersecretkey
-      MYSQL_HOST: mysql
-      MYSQL_USER: root
-      MYSQL_PASSWORD: example
-      MYSQL_DB: mydb
-      MONGO_URI: mongodb://mongo:27017/mydb
-      NEO4J_URI: bolt://neo4j:7687
-      NEO4J_USER: neo4j
-      NEO4J_PASSWORD: password
-
-  mysql:
-    image: mysql:8
-    container_name: mysql
-    ports:
-      - "3306:3306"
-    environment:
-      MYSQL_ROOT_PASSWORD: example
-      MYSQL_DATABASE: mydb
     volumes:
+      - ./backend/api:/app
+    working_dir: /app
+    command: ["python", "app.py"]
+
+  # FRONTEND
+  frontend:
+    build:
+      context: ./frontend
+    container_name: frontend
+    ports:
+      - "8000:8000"
+    environment:
+      - API_URL=http://api:5000
+    volumes:
+      - ./frontend:/app
+    working_dir: /app
+    command: ["python", "app.py"]
+
+  # MYSQL
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: ecommerce
+    ports:
+      - "3307:3306"
+    volumes:
+      - ./backend/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
       - mysql_data:/var/lib/mysql
 
+  # MONGODB
   mongo:
-    image: mongo:latest
+    image: mongo:6.0
     container_name: mongo
+    restart: always
     ports:
       - "27017:27017"
     volumes:
-      - mongo_data:/data/db
+      - ./backend/mongodb/dump:/dump
+    command: ["mongorestore", "--drop", "--dir=/dump", "--nsInclude=ecommerce_dw.*"]
 
+  # NEO4J
   neo4j:
-    image: neo4j:latest
+    image: neo4j
     container_name: neo4j
+    restart: always
     ports:
       - "7474:7474"
       - "7687:7687"
     environment:
-      NEO4J_AUTH: "neo4j/password"
+      NEO4J_ACCEPT_LICENSE_AGREEMENT: "yes"
+      NEO4J_AUTH: neo4j/password
+      NEO4J_dbms_security_procedures_unrestricted: "apoc.*"
+      NEO4J_PLUGINS: '["apoc"]'
     volumes:
       - neo4j_data:/data
+      - ./backend/neo4j:/import
+
+
+  # ZOOKEEPER
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    ports:
+      - "2181:2181"
+
+  # KAFKA
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    ports:
+      - "9092:9092"
+
+  # KAFKA PRODUCER
+  kafka-producer:
+    build:
+      context: ./backend/kafka
+    container_name: kafka-producer
+    depends_on:
+      - kafka
+    environment:
+      - KAFKA_BROKER=kafka:9092
+    volumes:
+      - ./backend/kafka:/app
+      - ./backend/mongodb/dump/ecommerce_dw:/app/data
+    command: ["python", "producer.py"]
 
 volumes:
   mysql_data:
-  mongo_data:
   neo4j_data:

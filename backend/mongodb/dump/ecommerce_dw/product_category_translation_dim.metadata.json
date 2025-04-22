@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"}],"uuid":"2ab87652aeb645478e7ea331a07de366","collectionName":"product_category_translation_dim","type":"collection"}
